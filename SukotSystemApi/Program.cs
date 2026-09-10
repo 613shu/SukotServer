@@ -15,6 +15,16 @@ using SukotSystemData.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render (and most PaaS hosts) tell the app which port to listen on via the
+// PORT environment variable, and expect the app to bind 0.0.0.0:PORT. Locally
+// this variable doesn't exist, so launchSettings.json keeps controlling the
+// port exactly as before - this only changes behavior when PORT is set.
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(renderPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
+}
+
 
 // Local dev only: the React client runs on a different origin/port
 // (Vite's dev server) than this API, so the browser blocks the
@@ -23,8 +33,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientDev", policy =>
     {
+        var allowedOrigins = new List<string> { "http://localhost:5173", "http://localhost:4173" };
+
+        // The deployed client's real origin isn't known/committed to code -
+        // it's supplied as an environment variable on Render (Cors__ClientOrigin)
+        // once the client is deployed, so changing it later never requires a
+        // code change or redeploy of the API.
+        var productionClientOrigin = builder.Configuration["Cors:ClientOrigin"];
+        if (!string.IsNullOrWhiteSpace(productionClientOrigin))
+        {
+            allowedOrigins.Add(productionClientOrigin);
+        }
+
         policy
-            .WithOrigins("http://localhost:5173", "http://localhost:4173")
+            .WithOrigins(allowedOrigins.ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -115,14 +137,32 @@ builder.Logging.ClearProviders();
 builder.Logging.AddNLog();
 var app = builder.Build();
 
-
-
-
-using (var scope = app.Services.CreateScope())
+// Apply any pending EF Core migrations automatically on startup. This is what
+// lets Render bring up a fresh deploy against the live Neon database with zero
+// manual steps - "dotnet ef database update" only ever needs to run locally
+// during development, never against the deployed environment. Migrate() is
+// idempotent: if there's nothing pending, it does nothing.
+using (var migrationScope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<DataContex>();
-    await db.Database.MigrateAsync();
+    var services = migrationScope.ServiceProvider;
+    var migrationLogger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var db = services.GetRequiredService<DataContex>();
+        migrationLogger.LogInformation("Applying pending EF Core migrations (if any)...");
+        db.Database.Migrate();
+        migrationLogger.LogInformation("Database migration check complete.");
+    }
+    catch (Exception ex)
+    {
+        // If the DB is unreachable or a migration fails, fail loudly and stop
+        // the app rather than starting up silently against a broken schema.
+        migrationLogger.LogError(ex, "Database migration failed on startup.");
+        throw;
+    }
 }
+
+
 // Pipeline order matters (requirement 10): error handling wraps EVERYTHING
 // below it, so it must be registered first. CorrelationId comes right after,
 // so the id exists before any other middleware/controller tries to log.
