@@ -1,0 +1,34 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+## Rider / VS Code (in case either is used too)
+.idea/
+.vscode/
+
+## User Secrets are stored outside the repo (%APPDATA%/Microsoft/UserSecrets)
+## so there is nothing secret-related to exclude here by default - just make
+## sure no one ever adds a real appsettings.*.json with a live connection
+## string/JWT key by hand. If that ever happens, add it below, e.g.:
+## SukotSystemApi/appsettings.Secrets.json
+
+## NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+## Misc stray files (avoid accidentally re-adding these)
+nul

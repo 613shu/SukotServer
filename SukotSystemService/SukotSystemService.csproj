@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.30" />
+    <!-- Only the abstractions - Part D: "the code itself continues to use the standard .NET
+         ILogger; NLog connects underneath." AuthService logs the inactive-rabbi-login-as-
+         customer case at Warning through this exact abstraction, same as everywhere else. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SukotSystemCore\SukotSystemCore.csproj" />
+  </ItemGroup>
+
+</Project>
