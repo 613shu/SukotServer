@@ -102,7 +102,15 @@ namespace SukotSystemApi.Middlewares
             if (context.Response.HasStarted)
                 return;
 
-            context.Response.Clear();
+            // NOTE: deliberately NOT calling context.Response.Clear() here.
+            // Clear() wipes every header already set on the response - including
+            // the Access-Control-Allow-Origin header the CORS middleware adds
+            // earlier in the pipeline (it runs before this middleware's catch
+            // block executes, since it's registered after this one and calls
+            // next() before any exception bubbles back up here). Clearing the
+            // response was stripping that header on every single error reply
+            // (400/401/403/404/409/500), which made the browser report a CORS
+            // failure on any failed request instead of showing the real error.
             context.Response.StatusCode = (int)statusCode;
             context.Response.ContentType = "application/json";
 
