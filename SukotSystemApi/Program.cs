@@ -115,6 +115,14 @@ builder.Logging.ClearProviders();
 builder.Logging.AddNLog();
 var app = builder.Build();
 
+
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DataContex>();
+    await db.Database.MigrateAsync();
+}
 // Pipeline order matters (requirement 10): error handling wraps EVERYTHING
 // below it, so it must be registered first. CorrelationId comes right after,
 // so the id exists before any other middleware/controller tries to log.
